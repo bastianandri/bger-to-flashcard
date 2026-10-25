@@ -12,7 +12,7 @@ from google.genai import types
 
 # --- EINSTELLUNGEN FÜR TITEL & KEY ---
 # Hier kannst du den Namen deiner Website jederzeit anpassen:
-APP_TITEL = "BGer-Kartei"
+APP_TITEL = "Entscheidkarten"
 APP_UNTERTITEL = "Füge eine Bundesgerichtsentscheidnummer oder den Urteilstext ein. BGer-to-Flashcard fasst den Entscheid in vier prägnanten Punkten zusammen und erstellt eine fertige Anki-Karteikarte zum Download."
 
 # Optional für lokalen Test: Du kannst deinen kostenlosen Google-Key auch direkt
@@ -173,14 +173,7 @@ def create_anki_deck(brief: CaseBrief) -> bytes:
         with open(apkg_path, "rb") as f:
             return f.read()
 
-# --- 5. WEBSITE UI (STREAMLIT) ---
-st.set_page_config(page_title="BGer-to-Anki Generator", page_icon="⚖️", layout="centered")
 
-st.title("BGer-to-Flashcard & case summary")
-st.markdown(
-    "Gib eine Bundesgerichtsentscheidnummer ein oder kopiere einen Urteilstext direkt hinein. "
-    "BGer-to-Flashcard erstellt daraus eine präzise **4-Punkte-Zusammenfassung** und eine fertige **Anki-Karteikarte (`.apkg`)**."
-)
 # Elegante Kopfzeile mit Titel und "Built by Bastian Stählin"-Badge
 st.markdown(
     f"""
