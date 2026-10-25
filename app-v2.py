@@ -332,16 +332,20 @@ else:
 tab1, tab2 = st.tabs(["🔍 Per Entscheidnummer suchen", "📋 Text manuell einfügen"])
 
 with tab1:
-    case_num = st.text_input("Geschäftsnummer oder BGE:", placeholder="z. B. BGE 148 III 12 oder 6B_450/2024")
-    fetch_btn = st.button("Entscheid automatisch laden & zusammenfassen", type="primary", key="btn_fetch")
+    # st.form sorgt dafür, dass ein Druck auf die Enter-Taste im Textfeld das Formular direkt absendet
+    with st.form(key="search_form", border=False):
+        case_num = st.text_input("Geschäftsnummer oder BGE:", placeholder="z. B. BGE 148 III 12 oder 6B_450/2024")
+        fetch_btn = st.form_submit_button("Entscheid automatisch laden & zusammenfassen", type="primary")
 
 with tab2:
-    manual_text = st.text_area(
-        "BGer-Entscheid Text hier einfügen:",
-        height=220,
-        placeholder="Kopiere hier den Text von bger.ch hinein (Sachverhalt A. ... Erwägung 2.1 ...)"
-    )
-    manual_btn = st.button("Manuellen Text zusammenfassen", type="primary", key="btn_manual")
+    # Im grossen Textfeld (text_area) macht Enter einen Zeilenumbruch, Strg+Enter (bzw. Cmd+Enter) sendet ab
+    with st.form(key="manual_form", border=False):
+        manual_text = st.text_area(
+            "BGer-Entscheid Text hier einfügen:",
+            height=220,
+            placeholder="Kopiere hier den Text von bger.ch hinein (Sachverhalt A. ... Erwägung 2.1 ...)"
+        )
+        manual_btn = st.form_submit_button("Manuellen Text zusammenfassen", type="primary")
 
 # Verarbeitung starten
 if fetch_btn or manual_btn:
