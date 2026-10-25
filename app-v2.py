@@ -192,6 +192,50 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# CSS für echtes Sticky Footer & automatische Textfarbe im Dark/Light Mode
+st.markdown(
+    """
+    <style>
+        /* Hauptcontainer Platzhalter nach unten geben, damit der Footer nichts verdeckt */
+        .block-container {
+            padding-bottom: 6rem;
+        }
+        
+        /* Erzwingt weisse Schriftfarbe im Dark Mode für alle normalen Texte und Markdown-Inhalte */
+        @media (prefers-color-scheme: dark) {
+            p, span, label, div, h1, h2, h3, h4, h5, h6 {
+                color: #ffffff !important;
+            }
+        }
+        /* Fallback für Streamlits eigene Dark-Mode-Klasse */
+        [data-testid="stAppViewContainer"] {
+            color-scheme: dark;
+        }
+
+        /* Sticky Footer ganz unten am Bildschirmrand fixiert */
+        .footer-disclaimer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(8px);
+            color: #ffffff !important;
+            font-size: 0.75rem;
+            padding: 10px 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 99999;
+            box-sizing: border-box;
+        }
+        .footer-disclaimer strong {
+            color: #ffffff !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # API-Key automatisch aus Streamlit-Secrets oder der Konstante oben laden
 default_key = FEST_EINGEBAUTER_KEY.strip()
 if not default_key:
@@ -286,10 +330,11 @@ if "brief" in st.session_state:
 # --- 6. FUSSZEILE / DISCLAIMER ---
 st.markdown(
     """
-    <div style="margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.8rem; color: #6b7280; line-height: 1.5; text-align: justify;">
-        <strong>Hinweis & Haftungsausschluss:</strong> Die Zusammenfassungen werden KI-gestützt generiert, können Fehler enthalten und sind stets anhand der amtlichen Originalquelle zu überprüfen. 
+    <div class="footer-disclaimer">
+        Die Zusammenfassungen werden KI-gestützt generiert, können Fehler enthalten und sind stets anhand der amtlichen Originalquelle zu überprüfen. 
         Kurzzusammenfassungen dienen der effizienten Repetition; für ein vertieftes juristisches Verständnis sowie die Erfassung des Gesamtkontexts und der vollständigen Argumentation wird die Lektüre des gesamten Entscheids empfohlen.
     </div>
     """,
     unsafe_allow_html=True,
 )
+
