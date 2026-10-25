@@ -287,8 +287,8 @@ if "brief" in st.session_state:
 st.markdown(
     """
     <div style="margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.8rem; color: #6b7280; line-height: 1.5; text-align: justify;">
-        <strong>Hinweis & Haftungsausschluss:</strong> Die Zusammenfassungen werden KI-gestützt generiert, können Ungenauigkeiten enthalten und sind stets anhand der amtlichen Originalquelle zu überprüfen. 
-        Kurzzusammenfassungen dienen der effizienten Repetition; für ein vertieftes juristisches Verständnis sowie die Erfassung des Gesamtkontexts und der vollständigen Argumentation wird die Lektüre des gesamten Bundesgerichtsentscheids empfohlen.
+        <strong>Hinweis & Haftungsausschluss:</strong> Die Zusammenfassungen werden KI-gestützt generiert, können Fehler enthalten und sind stets anhand der amtlichen Originalquelle zu überprüfen. 
+        Kurzzusammenfassungen dienen der effizienten Repetition; für ein vertieftes juristisches Verständnis sowie die Erfassung des Gesamtkontexts und der vollständigen Argumentation wird die Lektüre des gesamten Entscheids empfohlen.
     </div>
     """,
     unsafe_allow_html=True,
