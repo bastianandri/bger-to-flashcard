@@ -104,7 +104,7 @@ def generate_brief(bger_text: str, api_key: str) -> CaseBrief:
     )
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.8-flash",
         contents=bger_text,
         config=types.GenerateContentConfig(
             system_instruction=system_prompt,
