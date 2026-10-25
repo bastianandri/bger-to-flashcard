@@ -10,6 +10,11 @@ from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 
+# --- EINSTELLUNGEN FÜR TITEL & KEY ---
+# Hier kannst du den Namen deiner Website jederzeit anpassen:
+APP_TITEL = "BGer-Kartei"
+APP_UNTERTITEL = "Füge eine Bundesgerichtsentscheidnummer oder den Urteilstext ein. BGer-to-Flashcard fasst den Entscheid in vier prägnanten Punkten zusammen und erstellt eine fertige Anki-Karteikarte zum Download."
+
 # Optional für lokalen Test: Du kannst deinen kostenlosen Google-Key auch direkt
 # hier zwischen die Anführungszeichen setzen (Achtung: Nicht öffentlich auf GitHub hochladen,
 # für GitHub/Streamlit Cloud stattdessen die "Secrets"-Funktion nutzen!)
@@ -175,6 +180,23 @@ st.title("BGer-to-Flashcard & case summary")
 st.markdown(
     "Gib eine Bundesgerichtsentscheidnummer ein oder kopiere einen Urteilstext direkt hinein. "
     "BGer-to-Flashcard erstellt daraus eine präzise **4-Punkte-Zusammenfassung** und eine fertige **Anki-Karteikarte (`.apkg`)**."
+)
+# Elegante Kopfzeile mit Titel und "Built by Bastian Stählin"-Badge
+st.markdown(
+    f"""
+    <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px;">
+        <h1 style="margin: 0; padding: 0; font-size: 2.2rem; font-weight: 700; letter-spacing: -0.5px;">
+            ⚖️ {APP_TITEL}
+        </h1>
+        <span style="font-size: 0.85rem; color: #6b7280; font-weight: 500; background-color: #f3f4f6; padding: 4px 10px; border-radius: 9999px; border: 1px solid #e5e7eb;">
+            Built by Bastian Stählin
+        </span>
+    </div>
+    <p style="font-size: 1.05rem; color: #4b5563; margin-bottom: 24px;">
+        {APP_UNTERTITEL}
+    </p>
+    """,
+    unsafe_allow_html=True,
 )
 
 # API-Key automatisch aus Streamlit-Secrets oder der Konstante oben laden
