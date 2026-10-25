@@ -102,7 +102,7 @@ def generate_brief(bger_text: str, api_key: str) -> CaseBrief:
         "4 kurzen Kernaussagen (abstrakter Sachverhalt, Rechtsfrage, Erwägungen, Fazit) auf Deutsch zusammen. "
         "Verwende korrekte schweizerische juristische Terminologie und nenne die jeweilig einschlägigen Rechtsnormen (OR, ZGB, StGB, BV etc.)."
         "Falls nötig, konsultiere weitere Quellen im Zusammenhang mit dem Entscheid." 
-        "Gib die Entscheidnummer an, falls es nah verwandte Entscheide gibt, die im Kontext des Entscheids relevant sind.
+        "Gib die Entscheidnummer an, falls es nah verwandte Entscheide gibt, die im Kontext des Entscheids relevant sind."
     )
 
     response = client.models.generate_content(
