@@ -101,6 +101,8 @@ def generate_brief(bger_text: str, api_key: str) -> CaseBrief:
         "Schweizerischen Bundesgerichts (BGer/BGE). Fasse ihn extrem präzise in exakt "
         "4 kurzen Kernaussagen (abstrakter Sachverhalt, Rechtsfrage, Erwägungen, Fazit) auf Deutsch zusammen. "
         "Verwende korrekte schweizerische juristische Terminologie und nenne die jeweilig einschlägigen Rechtsnormen (OR, ZGB, StGB, BV etc.)."
+        "Falls nötig, konsultiere weitere Quellen im Zusammenhang mit dem Entscheid." 
+        "Gib die Entscheidnummer an, falls es nah verwandte Entscheide gibt, die im Kontext des Entscheids relevant sind.
     )
 
     response = client.models.generate_content(
@@ -232,7 +234,7 @@ if fetch_btn or manual_btn:
                 st.session_state["raw_preview"] = target_text[:1200] + "\n\n[...]"
 
         if target_text:
-            with st.spinner("🧠 Google Gemini analysiert den Entscheid und baut die Anki-Karte..."):
+            with st.spinner("Ich analysiert den Entscheid und baue die Anki-Karte..."):
                 try:
                     brief = generate_brief(target_text, api_key)
                     st.session_state["brief"] = brief
