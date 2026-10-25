@@ -13,7 +13,7 @@ from google.genai import types
 # --- EINSTELLUNGEN FÜR TITEL & KEY ---
 # Hier kannst du den Namen deiner Website jederzeit anpassen:
 APP_TITEL = "Entscheidkarten"
-APP_UNTERTITEL = "Füge eine Bundesgerichtsentscheidnummer oder den Urteilstext ein. BGer-to-Flashcard fasst den Entscheid in vier prägnanten Punkten zusammen und erstellt eine fertige Anki-Karteikarte zum Download."
+APP_UNTERTITEL = "Füge eine Bundesgerichtsentscheidnummer oder den Urteilstext ein. *Entscheidkarten* fasst den Entscheid in vier prägnanten Punkten zusammen und erstellt eine fertige Anki-Karteikarte zum Download."
 
 # Optional für lokalen Test: Du kannst deinen kostenlosen Google-Key auch direkt
 # hier zwischen die Anführungszeichen setzen (Achtung: Nicht öffentlich auf GitHub hochladen,
@@ -213,23 +213,29 @@ st.markdown(
         }
 
         /* Sticky Footer ganz unten am Bildschirmrand fixiert */
+        /* Footer passt sich exakt der Textbreite an (gleiche Breite wie Streamlit Container) */
         .footer-disclaimer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: rgba(15, 23, 42, 0.95);
+            margin-top: 4rem;
+            margin-bottom: 2rem;
+            background-color: rgba(15, 23, 42, 0.05);
             backdrop-filter: blur(8px);
-            color: #ffffff !important;
+            color: #4b5563 !important;
             font-size: 0.75rem;
-            padding: 10px 20px;
-            text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            z-index: 99999;
+            padding: 12px 16px;
+            text-align: justify;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
             box-sizing: border-box;
+            border-radius: 6px;
         }
-        .footer-disclaimer strong {
-            color: #ffffff !important;
+        /* Automatische Anpassung für den Dark Mode der Website */
+        @media (prefers-color-scheme: dark) {
+            .footer-disclaimer {
+                background-color: rgba(255, 255, 255, 0.05);
+                color: #9ca3af !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
         }
     </style>
     """,
@@ -331,7 +337,7 @@ if "brief" in st.session_state:
 st.markdown(
     """
     <div class="footer-disclaimer">
-        Die Zusammenfassungen werden KI-gestützt generiert, können Fehler enthalten und sind stets anhand der amtlichen Originalquelle zu überprüfen. 
+        </strong> Die Zusammenfassungen werden KI-gestützt generiert, können Fehler enthalten und sind stets anhand der amtlichen Originalquelle zu überprüfen. 
         Kurzzusammenfassungen dienen der effizienten Repetition; für ein vertieftes juristisches Verständnis sowie die Erfassung des Gesamtkontexts und der vollständigen Argumentation wird die Lektüre des gesamten Entscheids empfohlen.
     </div>
     """,
