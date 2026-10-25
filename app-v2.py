@@ -13,7 +13,11 @@ from google.genai import types
 # --- EINSTELLUNGEN FÜR TITEL & KEY ---
 # Hier kannst du den Namen deiner Website jederzeit anpassen:
 APP_TITEL = "Entscheidkarten"
-APP_UNTERTITEL = "Füge eine Bundesgerichtsentscheidnummer oder den Urteilstext ein. *Entscheidkarten* fasst den Entscheid in vier prägnanten Punkten zusammen und erstellt eine fertige Anki-Karteikarte zum Download."
+APP_UNTERTITEL = (
+    "Füge eine Bundesgerichtsentscheidnummer oder den Urteilstext ein. "
+    "<em>Entscheidkarten</em> fasst den Entscheid in vier prägnanten Punkten zusammen "
+    "und erstellt eine fertige Anki-Karteikarte zum Download."
+)
 
 # Optional für lokalen Test: Du kannst deinen kostenlosen Google-Key auch direkt
 # hier zwischen die Anführungszeichen setzen (Achtung: Nicht öffentlich auf GitHub hochladen,
@@ -105,24 +109,42 @@ def generate_brief(bger_text: str, api_key: str) -> CaseBrief:
         "Du bist ein Schweizer Rechtsprofessor. Analysiere den folgenden Entscheid des "
         "Schweizerischen Bundesgerichts (BGer/BGE). Fasse ihn extrem präzise in exakt "
         "4 kurzen Kernaussagen (abstrakter Sachverhalt, Rechtsfrage, Erwägungen, Fazit) auf Deutsch zusammen. "
-        "Verwende korrekte schweizerische juristische Terminologie und nenne die jeweilig einschlägigen Rechtsnormen (OR, ZGB, StGB, BV etc.)."
-        "Falls nötig, konsultiere weitere Quellen im Zusammenhang mit dem Entscheid." 
+        "Verwende korrekte schweizerische juristische Terminologie und nenne die jeweilig einschlägigen Rechtsnormen (OR, ZGB, StGB, BV etc.). "
+        "Falls nötig, konsultiere weitere Quellen im Zusammenhang mit dem Entscheid. "
         "Gib die Entscheidnummer an, falls es nah verwandte Entscheide gibt, die im Kontext des Entscheids relevant sind."
     )
 
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=bger_text,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            response_mime_type="application/json",
-            response_schema=CaseBrief,
-            temperature=0.2,
-        ),
+    config = types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        response_mime_type="application/json",
+        response_schema=CaseBrief,
+        temperature=0.2,
     )
-    if getattr(response, "parsed", None) and isinstance(response.parsed, CaseBrief):
-        return response.parsed
-    return CaseBrief.model_validate_json(response.text)
+
+    candidate_models = [
+        "gemini-3.8-flash",
+        "gemini-3-flash-preview",
+        "gemini-2.5-flash",
+    ]
+    
+    last_error = None
+    for model_name in candidate_models:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=bger_text,
+                config=config,
+            )
+            if getattr(response, "parsed", None) and isinstance(response.parsed, CaseBrief):
+                return response.parsed
+            return CaseBrief.model_validate_json(response.text)
+        except Exception as e:
+            last_error = e
+            if "404" in str(e) or "NOT_FOUND" in str(e):
+                continue
+            raise e
+
+    raise last_error
 
 # --- 4. ANKI-DATEI (.apkg) ERSTELLEN (Windows- & Mac-sicher) ---
 def create_anki_deck(brief: CaseBrief) -> bytes:
@@ -173,71 +195,117 @@ def create_anki_deck(brief: CaseBrief) -> bytes:
         with open(apkg_path, "rb") as f:
             return f.read()
 
+# --- 5. WEBSITE UI (STREAMLIT) ---
+# Setzt den Tab-Titel im Browser auf "Entscheidkarten" und das Tab-Icon (Favicon) auf das Waage-Emoji
+st.set_page_config(page_title=APP_TITEL, page_icon="⚖️", layout="centered")
 
-# Elegante Kopfzeile mit Titel und "Built by Bastian Stählin"-Badge
+# CSS für volle Lesbarkeit in Light & Dark Mode (nutzt Streamlits native Theme-Variablen)
+# sowie den unten fixierten und an die Textbreite angepassten Disclaimer
 st.markdown(
-    f"""
-    <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px;">
-        <h1 style="margin: 0; padding: 0; font-size: 2.2rem; font-weight: 700; letter-spacing: -0.5px;">
-            ⚖️ {APP_TITEL}
-        </h1>
-        <span style="font-size: 0.85rem; color: #6b7280; font-weight: 500; background-color: #f3f4f6; padding: 4px 10px; border-radius: 9999px; border: 1px solid #e5e7eb;">
-            Built by Bastian Stählin
-        </span>
-    </div>
-    <p style="font-size: 1.05rem; color: #4b5563; margin-bottom: 24px;">
-        {APP_UNTERTITEL}
-    </p>
+    """
+    <style>
+        /* Genug Abstand unten im Hauptcontainer, damit der fixierte Footer nichts überdeckt */
+        .block-container {
+            padding-bottom: 7.5rem !important;
+        }
+
+        /* Kopfzeilen-Styling (passt sich automatisch an Light & Dark Mode von Streamlit an) */
+        .custom-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-bottom: 2px solid rgba(128, 128, 128, 0.25);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .custom-title {
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 2.2rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.5px;
+            color: var(--text-color) !important;
+        }
+        .author-badge {
+            font-size: 0.85rem;
+            color: var(--text-color) !important;
+            font-weight: 500;
+            background-color: var(--secondary-background-color);
+            padding: 5px 12px;
+            border-radius: 9999px;
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            white-space: nowrap;
+        }
+        .author-badge a {
+            color: var(--text-color) !important;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            font-weight: 600;
+            transition: opacity 0.2s ease;
+        }
+        .author-badge a:hover {
+            opacity: 0.75;
+        }
+        .custom-subtitle {
+            font-size: 1.02rem;
+            color: var(--text-color) !important;
+            opacity: 0.88;
+            margin-bottom: 24px;
+            line-height: 1.55;
+        }
+
+        /* Fixierter Footer unten: exakt so breit und zentriert wie der Streamlit-Textbereich */
+        .footer-wrapper {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            pointer-events: none;
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            background: linear-gradient(to top, var(--background-color) 80%, transparent);
+            padding: 12px 1rem 10px 1rem;
+            box-sizing: border-box;
+        }
+        .footer-disclaimer {
+            pointer-events: auto;
+            width: 100%;
+            max-width: 704px; /* Exakte Standard-Textbreite von Streamlit (layout="centered") */
+            background-color: var(--secondary-background-color);
+            color: var(--text-color) !important;
+            font-size: 0.74rem;
+            line-height: 1.45;
+            padding: 10px 14px;
+            text-align: justify;
+            border: 1px solid rgba(128, 128, 128, 0.28);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+        }
+        .footer-disclaimer strong {
+            color: var(--text-color) !important;
+        }
+    </style>
     """,
     unsafe_allow_html=True,
 )
 
-# CSS für echtes Sticky Footer & automatische Textfarbe im Dark/Light Mode
+# Elegante Kopfzeile: Titel ohne Emoji, rechts "Built by Bastian Stählin" mit klickbarem LinkedIn-Link
 st.markdown(
-    """
-    <style>
-        /* Hauptcontainer Platzhalter nach unten geben, damit der Footer nichts verdeckt */
-        .block-container {
-            padding-bottom: 6rem;
-        }
-        
-        /* Erzwingt weisse Schriftfarbe im Dark Mode für alle normalen Texte und Markdown-Inhalte */
-        @media (prefers-color-scheme: dark) {
-            p, span, label, div, h1, h2, h3, h4, h5, h6 {
-                color: #ffffff !important;
-            }
-        }
-        /* Fallback für Streamlits eigene Dark-Mode-Klasse */
-        [data-testid="stAppViewContainer"] {
-            color-scheme: dark;
-        }
-
-        /* Sticky Footer ganz unten am Bildschirmrand fixiert */
-        /* Footer passt sich exakt der Textbreite an (gleiche Breite wie Streamlit Container) */
-        .footer-disclaimer {
-            margin-top: 4rem;
-            margin-bottom: 2rem;
-            background-color: rgba(15, 23, 42, 0.05);
-            backdrop-filter: blur(8px);
-            color: #4b5563 !important;
-            font-size: 0.75rem;
-            padding: 12px 16px;
-            text-align: justify;
-            border-top: 1px solid #e5e7eb;
-            border-bottom: 1px solid #e5e7eb;
-            box-sizing: border-box;
-            border-radius: 6px;
-        }
-        /* Automatische Anpassung für den Dark Mode der Website */
-        @media (prefers-color-scheme: dark) {
-            .footer-disclaimer {
-                background-color: rgba(255, 255, 255, 0.05);
-                color: #9ca3af !important;
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }
-        }
-    </style>
+    f"""
+    <div class="custom-header">
+        <h1 class="custom-title">{APP_TITEL}</h1>
+        <span class="author-badge">
+            Built by <a href="https://www.linkedin.com/in/bastian-st%C3%A4hlin" target="_blank" rel="noopener noreferrer">Bastian Stählin</a>
+        </span>
+    </div>
+    <p class="custom-subtitle">
+        {APP_UNTERTITEL}
+    </p>
     """,
     unsafe_allow_html=True,
 )
@@ -299,7 +367,7 @@ if fetch_btn or manual_btn:
                 st.session_state["raw_preview"] = target_text[:1200] + "\n\n[...]"
 
         if target_text:
-            with st.spinner("Ich analysiert den Entscheid und baue die Anki-Karte..."):
+            with st.spinner("Ich analysiere den Entscheid und baue die Anki-Karte..."):
                 try:
                     brief = generate_brief(target_text, api_key)
                     st.session_state["brief"] = brief
@@ -314,10 +382,10 @@ if "brief" in st.session_state:
     st.subheader(f"📌 {brief.titel}")
     
     st.markdown(f"""
-* **Sachverhalt:** {brief.sachverhalt}
-* **Rechtsfrage:** {brief.rechtsfrage}
-* **Erwägungen:** {brief.erwaegungen}
-* **Fazit / Rechtssatz:** {brief.fazit}
+- **Sachverhalt:** {brief.sachverhalt}
+- **Rechtsfrage:** {brief.rechtsfrage}
+- **Erwägungen:** {brief.erwaegungen}
+- **Fazit / Rechtssatz:** {brief.fazit}
 """)
 
     safe_filename = re.sub(r"[^a-zA-Z0-9_-]", "_", brief.titel)[:50]
@@ -332,15 +400,15 @@ if "brief" in st.session_state:
         with st.expander("🔍 Vorschau des eingelesenen Texts (ohne Rubrum)"):
             st.text(st.session_state["raw_preview"])
 
-
-# --- 6. FUSSZEILE / DISCLAIMER ---
+# --- 6. FUSSZEILE / DISCLAIMER (UNTEN FIXIERT & IN TEXTBREITE) ---
 st.markdown(
     """
-    <div class="footer-disclaimer">
-        </strong> Die Zusammenfassungen werden KI-gestützt generiert, können Fehler enthalten und sind stets anhand der amtlichen Originalquelle zu überprüfen. 
-        Kurzzusammenfassungen dienen der effizienten Repetition; für ein vertieftes juristisches Verständnis sowie die Erfassung des Gesamtkontexts und der vollständigen Argumentation wird die Lektüre des gesamten Entscheids empfohlen.
+    <div class="footer-wrapper">
+        <div class="footer-disclaimer">
+            <strong>Hinweis & Haftungsausschluss:</strong> Die Zusammenfassungen werden KI-gestützt generiert, können Fehler enthalten und sind stets anhand der amtlichen Originalquelle zu überprüfen. 
+            Kurzzusammenfassungen dienen der effizienten Repetition; für ein vertieftes juristisches Verständnis sowie die Erfassung des Gesamtkontexts und der vollständigen Argumentation wird die Lektüre des gesamten Entscheids empfohlen.
+        </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
-
