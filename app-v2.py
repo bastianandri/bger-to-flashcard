@@ -19,8 +19,7 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 APP_TITEL = "Entscheidkarten"
 APP_UNTERTITEL = (
-    "Schweizer Bundesgerichtsentscheide strukturiert erarbeiten und repetieren – "
-    "mit einer fertigen Anki-Karte zum Lernen."
+    "Schweizer Bundesgerichtsentscheide strukturiert erarbeiten und repetieren, mit einer fertigen Anki-Karte zum Lernen."
 )
 FEST_EINGEBAUTER_KEY = ""  # Für Deployments besser Streamlit Secrets verwenden.
 MAX_TEXT_LENGTH = 40_000
@@ -331,7 +330,7 @@ st.markdown(
 
 st.title(APP_TITEL)
 st.write(APP_UNTERTITEL)
-st.caption("Entscheidnummer eingeben oder den Urteilstext einfügen – anschliessend die Zusammenfassung prüfen und als Anki-Karte exportieren.")
+st.caption("Entscheidnummer eingeben oder den Urteilstext einfügen. Anschliessend die Zusammenfassung prüfen und als Anki-Karte exportieren.")
 
 with st.expander("Einstellungen", expanded=False):
     default_key = FEST_EINGEBAUTER_KEY.strip()
@@ -479,5 +478,5 @@ if "brief" in st.session_state and "anki_bytes" in st.session_state:
 
 st.divider()
 st.caption(
-    "Entscheidkarten · KI-gestützte Lernhilfe. Für Vollständigkeit, Richtigkeit und die rechtliche Einordnung ist der amtliche Originalentscheid massgebend."
+    "Entscheidkarten · Die Zusammenfassungen werden KI-gestützt erstellt und dienen der Unterstützung bei der Repetiton. Sie können Fehler enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext. Bitte überprüfe die Zusammenfassung stets anhand der amtlichen Quelle."
 )
