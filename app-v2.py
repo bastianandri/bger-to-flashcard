@@ -3,6 +3,7 @@ import html
 import os
 import re
 import tempfile
+import time
 from typing import Optional
 
 import genanki
@@ -240,12 +241,16 @@ def generate_brief(
         config_args.pop("thinking_config", None)
         config = types.GenerateContentConfig(**config_args)
 
-    # Das aktuelle Flash-Modell wird zuerst verwendet. Nur bei einem nicht verfügbaren
-    # Modell wird zurückgefallen; normale API-Fehler sollen nicht mehrere Versuche auslösen.
-    candidate_models = ["gemini-3.8-flash", "gemini-3.6-flash"]
+    # Bei Modellfehlern oder vorübergehender Überlastung auf weitere Flash-Modelle ausweichen.
+    # Das Google-SDK führt für vorübergehende 5xx-Fehler bereits eigene Wiederholungen aus.
+    candidate_models = [
+        "gemini-3.8-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash-lite",
+    ]
     last_error: Optional[Exception] = None
 
-    for model_name in candidate_models:
+    for model_index, model_name in enumerate(candidate_models):
         try:
             response = client.models.generate_content(
                 model=model_name,
@@ -269,8 +274,21 @@ def generate_brief(
             return brief
         except Exception as exc:
             last_error = exc
-            error_text = str(exc).upper()
-            if "404" in error_text or "NOT_FOUND" in error_text or "MODEL NOT FOUND" in error_text:
+            error_text = f"{type(exc).__name__}: {exc}".upper()
+            model_not_found = (
+                "404" in error_text
+                or "NOT_FOUND" in error_text
+                or "MODEL NOT FOUND" in error_text
+            )
+            temporarily_unavailable = any(
+                marker in error_text
+                for marker in ("503", "UNAVAILABLE", "SERVICE_UNAVAILABLE", "HIGH DEMAND")
+            )
+
+            # Bei Modell-404 direkt weiter; bei 503 eine kurze Pause und anderes Modell versuchen.
+            if model_not_found or temporarily_unavailable:
+                if temporarily_unavailable and model_index < len(candidate_models) - 1:
+                    time.sleep(1.0)
                 continue
             raise
 
