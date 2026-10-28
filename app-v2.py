@@ -470,7 +470,7 @@ if "brief" in st.session_state and "anki_bytes" in st.session_state:
         use_container_width=True,
     )
 
-    st.caption("Bitte prüfe die Zusammenfassung anhand der amtlichen Originalquelle. Sie dient der Repetition und Sie können Fehler oder Verkürzungen enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext.")
+    st.caption("Bitte prüfe die Zusammenfassung anhand der amtlichen Originalquelle. Sie dient der Repetition und kann Fehler oder Verkürzungen enthalten.")
 
     if st.session_state.get("raw_preview"):
         with st.expander("Verarbeiteten Ausgangstext ansehen"):
@@ -478,5 +478,5 @@ if "brief" in st.session_state and "anki_bytes" in st.session_state:
 
 st.divider()
 st.caption(
-    "Entscheidkarten · Die Zusammenfassungen werden KI-gestützt erstellt und dienen der Unterstützung bei der Repetiton. Sie können Fehler enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext. Bitte überprüfe die Zusammenfassung stets anhand der amtlichen Quelle."
+    "Entscheidkarten · Die Zusammenfassungen werden KI-gestützt erstellt und dienen der Unterstützung bei der Repetiton. Sie können Fehler enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext."
 )
