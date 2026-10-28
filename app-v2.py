@@ -431,7 +431,7 @@ with tab_search:
     with st.form("search_form", clear_on_submit=False, border=False):
         case_num = st.text_input(
             "Geschäftsnummer oder BGE",
-            placeholder="z. B. BGE 148 III 12 oder 6B_450/2024",
+            placeholder="z. B. BGE 133 III 257 oder 4A_149/2025",
         )
         fetch_btn = st.form_submit_button(
             "Entscheid laden und zusammenfassen",
