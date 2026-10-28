@@ -517,10 +517,9 @@ if fetch_btn or manual_btn:
                 st.session_state["anki_bytes"] = anki_bytes
                 st.success("Die Zusammenfassung ist bereit.")
             except Exception as exc:
-                st.error("Die Analyse ist fehlgeschlagen. Prüfe den API-Schlüssel und das verfügbare Gemini-Kontingent.")
-                with st.expander("Technische Details"):
-                    st.code(str(exc))
-
+    st.error("Die Analyse ist fehlgeschlagen. Hier findest du die technische Fehlermeldung:")
+    with st.expander("Technische Details öffnen", expanded=True):
+        st.code(f"{type(exc).__name__}: {exc}")
 
 # ---------------------------------------------------------------------------
 # Ergebnis
