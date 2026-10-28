@@ -480,3 +480,18 @@ st.divider()
 st.caption(
     "Entscheidkarten · Die Zusammenfassungen werden KI-gestützt erstellt und dienen der Unterstützung bei der Repetiton. Sie können Fehler enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext."
 )
+
+st.markdown(
+    """
+    <div style="
+        text-align: center;
+        color: #888888;
+        font-size: 0.8rem;
+        margin-top: 2rem;
+        padding: 0.75rem 0;
+    ">
+        Built by <strong style="color: #555555;">Bastian Stählin</strong>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
