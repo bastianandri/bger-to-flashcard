@@ -490,8 +490,19 @@ st.markdown(
         margin-top: 2rem;
         padding: 0.75rem 0;
     ">
-        Built by <strong style="color: #555555;">Bastian Stählin</strong>
+        Built by
+        <a href="https://www.linkedin.com/in/bastian-st%C3%A4hlin/"
+           target="_blank"
+           rel="noopener noreferrer"
+           style="
+               color: #555555;
+               font-weight: 600;
+               text-decoration: none;
+           ">
+            Bastian Stählin
+        </a>
     </div>
     """,
     unsafe_allow_html=True,
+)
 )
