@@ -17,9 +17,9 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 # Einstellungen
 # ---------------------------------------------------------------------------
-APP_TITEL = "Entscheidkarten"
+APP_TITEL = "Entscheidkarten für Studierende"
 APP_UNTERTITEL = (
-    "Schweizer Bundesgerichtsentscheide strukturiert erarbeiten und repetieren, mit einer fertigen Anki-Karte zum Lernen."
+    "Schweizer Bundesgerichtsentscheide in Kernaussagen fassen und direkt als Anki-Karteikarte exportieren."
 )
 FEST_EINGEBAUTER_KEY = ""  # Für Deployments besser Streamlit Secrets verwenden.
 MAX_TEXT_LENGTH = 40_000
