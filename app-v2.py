@@ -2,6 +2,7 @@ import hashlib
 import html
 import re
 import time
+import tempfile
 from typing import Optional
 
 import requests
@@ -45,28 +46,31 @@ class CaseBrief(BaseModel):
     )
     rechtsfrage: str = Field(
         description=(
-            "Die zentrale Rechtsfrage als direkte, präzise Frage formulieren, "
-            "z. B. 'Welche Voraussetzungen gelten für eine Vertrauenshaftung?' "
-            "Mit Fragezeichen abschliessen; noch keine Antwort vorwegnehmen. Keine Entscheidnummer "
-            "in die Rechtsfrage schreiben, diese gehört nur in entscheidnummer."
+            "Eine abstrakte, neutrale und offene Prüfungsfrage zum allgemeinen Rechtsproblem formulieren. "
+            "Bevorzugte Form: 'Welche Voraussetzungen gelten für ...?', 'Unter welchen Umständen liegt ... vor?' "
+            "oder 'Welche Rechtsfolgen hat ...?'. Keine suggestive Ja/Nein-Frage, keine Frage nach dem konkreten "
+            "Prozessausgang und keine Erwähnung von Klägern, Beschwerdeführenden oder Einzelfalltatsachen. "
+            "Mit Fragezeichen abschliessen. Keine Entscheidnummer in die Rechtsfrage schreiben; diese gehört "
+            "nur in entscheidnummer."
         )
     )
     sachverhalt: str = Field(
         description=(
-            "Relevanten Sachverhalt in 1 bis 3 knappen Stichpunkten darstellen. "
-            "Jeden Stichpunkt durch einen Zeilenumbruch trennen und keine Bullet-Zeichen voranstellen."
+            "Den relevanten Sachverhalt in höchstens 3 knappen Stichpunkten darstellen, nur soweit für das "
+            "Verständnis der Rechtsfrage nötig. Jeder Punkt als kurze Aussage, getrennt durch Zeilenumbruch; "
+            "keine Bullet-Zeichen voranstellen."
         )
     )
     rechtliche_erkenntnisse: str = Field(
         description=(
             "Die rechtlichen Erwägungen und die tragende Kernaussage in einem gemeinsamen Feld "
-            "mit 3 bis 5 prägnanten Stichpunkten zusammenfassen. Ausschliesslich abstrahierte, "
-            "über den Einzelfall hinaus nutzbare Rechtsgrundsätze, rechtliche Voraussetzungen, "
-            "Prüfungsschritte und Grenzen wiedergeben, soweit der Entscheid sie trägt. Keine "
-            "Parteivorbringen, keine Formulierungen wie 'die Klägerin machte geltend', keine "
-            "konkreten Falltatsachen und keine blossen Verfahrensschritte. Nicht bloss den Ausgang "
-            "des Einzelfalls beschreiben. Jeden Stichpunkt durch einen Zeilenumbruch trennen und "
-            "keine Bullet-Zeichen voranstellen."
+            "mit höchstens 3 prägnanten Stichpunkten zusammenfassen. Zusammen mit höchstens 3 Sachverhalts- "
+            "Stichpunkten und genau einer Rechtsfrage darf die gesamte Zusammenfassung höchstens 7 Punkte haben. "
+            "Ausschliesslich abstrahierte, über den Einzelfall hinaus nutzbare Rechtsgrundsätze, rechtliche "
+            "Voraussetzungen, Prüfungsschritte und Grenzen wiedergeben, soweit der Entscheid sie trägt. Keine "
+            "Parteivorbringen, keine Formulierungen wie 'die Klägerin machte geltend', keine konkreten "
+            "Falltatsachen und keine blossen Verfahrensschritte. Nicht bloss den Ausgang des Einzelfalls "
+            "beschreiben. Jeden Stichpunkt durch einen Zeilenumbruch trennen und keine Bullet-Zeichen voranstellen."
         )
     )
 
@@ -92,16 +96,37 @@ def extract_decision_number(text: str) -> str:
 
 
 def format_as_question(value: str) -> str:
-    """Bereinigt die KI-Rechtsfrage und stellt sicher, dass sie Frageform hat."""
+    """Bereinigt die Rechtsfrage und bevorzugt eine abstrakte, neutrale Prüfungsfrage."""
     question = re.sub(r"^\s*(rechtsfrage|frage)\s*:\s*", "", str(value or ""), flags=re.IGNORECASE)
-    # Falls die KI trotzdem die Referenz anhängt, entfernen wir sie hier; sie wird separat
-    # genau einmal in Klammern an die Vorderseite gesetzt.
+    # Die Entscheidnummer wird separat und nur einmal in Klammern ergänzt.
     question = re.sub(r"\s*\(?\bBGE\s+\d{1,3}\s+[IVX]{1,4}\s+\d{1,4}\)?", "", question, flags=re.IGNORECASE)
     question = re.sub(r"\s*\(?\b\d{1,2}[A-Z]{1,2}_\d{1,5}/\d{4}\)?", "", question, flags=re.IGNORECASE)
-    question = re.sub(r"\b(?:nach|gemäss|gemäß|laut|im|in)\s*\??\s*$", "", question, flags=re.IGNORECASE)
     question = re.sub(r"\s+", " ", question).strip().strip('"“”„')
     if not question:
-        return "Welche Rechtsfrage beantwortet der Entscheid?"
+        return "Welche rechtlichen Voraussetzungen sind für die behandelte Rechtsfrage massgeblich?"
+
+    case_specific = re.search(
+        r"\b(?:klägerin|kläger|beschwerdeführerin|beschwerdeführer|beschwerdegegnerin|"
+        r"beschwerdegegner|gesuchstellerin|gesuchsteller|im vorliegenden fall|im konkreten fall|"
+        r"in casu|vorinstanz|kantonsgericht)\b|\bwie (?:hat|entschied|beurteilte) das bundesgericht\b",
+        question,
+        flags=re.IGNORECASE,
+    )
+    leading_or_outcome = re.match(
+        r"^(?:war|ist|sind|hat|haben|wurde|wurden)\s+(?:die beschwerde|der anspruch|die klägerin|"
+        r"der kläger|die vorinstanz|das bundesgericht|der beschwerdeführer|die beschwerdeführerin)\b",
+        question,
+        flags=re.IGNORECASE,
+    )
+    abstract_opening = re.match(
+        r"^(?:welche(?:r|s|n)?\b|unter welchen\b|wann\b|wie\b|inwiefern\b|woran\b|"
+        r"was\s+(?:sind|ist|gilt|bedeutet|versteht)\b|in welchem umfang\b)",
+        question,
+        flags=re.IGNORECASE,
+    )
+    if case_specific or leading_or_outcome or not abstract_opening:
+        return "Welche rechtlichen Voraussetzungen und Kriterien sind für die Beurteilung massgeblich?"
+
     if not question.endswith("?"):
         question = question.rstrip(" .!;:") + "?"
     return question[0].upper() + question[1:]
@@ -216,7 +241,7 @@ def generalize_legal_learnings(value: str) -> str:
             continue
         cleaned.append(normalized)
     if cleaned:
-        return "\n".join(cleaned)
+        return "\n".join(cleaned[:3])
     return "Keine abstrakte Rechtsregel konnte zuverlässig aus dem generierten Text extrahiert werden. Bitte erneut analysieren und den Originalentscheid prüfen."
 
 
@@ -235,17 +260,21 @@ def generate_brief(
     system_prompt = (
         "Du analysierst ausschliesslich den bereitgestellten Entscheid des Schweizerischen "
         "Bundesgerichts. Antworte auf Deutsch und verwende schweizerische juristische Terminologie. "
-        "Die Rechtsfrage MUSS als direkte, vollständige Frage formuliert sein und mit einem "
-        "Fragezeichen enden; sie darf nicht bloss als Thema oder indirekter Satz formuliert sein. "
-        "Beispiel: 'Welche Voraussetzungen gelten für eine Vertrauenshaftung?' Die Rechtsfrage "
-        "soll die zentrale juristische Streitfrage auf den Punkt bringen und die Antwort nicht "
-        "vorwegnehmen. Die Rechtsfrage darf keine BGE- oder Geschäftsnummer enthalten; diese "
+        "Die Rechtsfrage MUSS eine abstrakte, neutrale, offene Prüfungsfrage zum allgemeinen Rechtsproblem sein. "
+        "Bevorzuge Formulierungen wie 'Welche Voraussetzungen gelten für ...?', 'Unter welchen Umständen liegt ... vor?', "
+        "'Welche Kriterien sind massgeblich?' oder 'Welche Rechtsfolgen hat ...?'. Keine suggestive Ja/Nein-Frage, "
+        "keine Frage nach dem konkreten Prozessausgang, keine Erwähnung von Klägern/Beschwerdeführenden und keine "
+        "Frage, die die Antwort bereits nahelegt. Beispiel: 'Welche Voraussetzungen gelten für eine Vertrauenshaftung?' "
+        "Die Rechtsfrage soll das allgemeine Rechtsproblem auf den Punkt bringen und die Antwort nicht vorwegnehmen. "
+        "Die Rechtsfrage darf keine BGE- oder Geschäftsnummer enthalten; diese "
         "gehört ausschliesslich in das separate Feld entscheidnummer. Gib die Entscheidnummer "
         "exakt so wieder, wie sie im Text erscheint; wenn "
         "keine sicher erkennbar ist, gib einen leeren String zurück. Erfinde niemals eine "
         "Entscheidnummer, Tatsachen, Zitate, Normen oder verwandte Entscheide. Fasse den "
-        "Sachverhalt in 1 bis 3 knappen Stichpunkten und die rechtlichen Erwägungen samt "
-        "tragender Kernaussage in einem gemeinsamen Feld mit 3 bis 5 Stichpunkten zusammen. "
+        "Sachverhalt in höchstens 3 knappen Stichpunkten und die rechtlichen Erwägungen samt "
+        "tragender Kernaussage in einem gemeinsamen Feld mit höchstens 3 Stichpunkten zusammen. "
+        "Die Zusammenfassung hat genau eine Rechtsfrage und höchstens 3 Sachverhalts- plus 3 Rechtslern-Stichpunkte, "
+        "also maximal 7 Punkte insgesamt. Kürze konsequent und behalte nur das zum Lernen Wesentliche. "
         "Die rechtlichen Stichpunkte müssen abstrakte, über den Einzelfall hinaus nutzbare "
         "Rechtsgrundsätze, rechtliche Voraussetzungen, Prüfungsschritte oder Grenzen ausdrücken, "
         "die direkt aus dem Entscheid hervorgehen. Formuliere sie so, dass sie als allgemeine "
@@ -312,7 +341,10 @@ def generate_brief(
             from_text = extract_decision_number(bger_text)
             brief.entscheidnummer = provided or from_text or extract_decision_number(brief.entscheidnummer)
             brief.rechtsfrage = format_as_question(brief.rechtsfrage)
-            brief.rechtliche_erkenntnisse = generalize_legal_learnings(brief.rechtliche_erkenntnisse)
+            brief.sachverhalt = limit_bullet_items(brief.sachverhalt, 3)
+            brief.rechtliche_erkenntnisse = limit_bullet_items(
+                generalize_legal_learnings(brief.rechtliche_erkenntnisse), 3
+            )
             return brief
         except Exception as exc:
             last_error = exc
@@ -360,6 +392,11 @@ def bullet_items(value: str) -> list[str]:
     return items or [text]
 
 
+def limit_bullet_items(value: str, maximum: int) -> str:
+    """Begrenzt den Inhalt technisch auf höchstens die angegebene Anzahl Stichpunkte."""
+    return "\n".join(bullet_items(value)[:maximum])
+
+
 def bullet_list_html(value: str) -> str:
     """Erstellt eine HTML-Liste aus textbasierten Stichpunkten."""
     items = bullet_items(value)
@@ -387,8 +424,8 @@ def build_card_fields(brief: CaseBrief) -> tuple[str, str]:
     return front_text, answer_html
 
 
-def create_anki_text(brief: CaseBrief) -> bytes:
-    """Erstellt eine TXT-Datei, deren Zieldeck beim Import in Anki gewählt wird."""
+def create_anki_text(brief: CaseBrief, deck_name: str = "") -> bytes:
+    """Erstellt eine TXT-Datei; ein vorhandenes Zieldeck kann beim Import vorausgewählt werden."""
     front_text, answer_html = build_card_fields(brief)
     front_html = (
         '<div style="font-family:Arial,sans-serif;font-size:20px;line-height:1.5;'
@@ -397,14 +434,70 @@ def create_anki_text(brief: CaseBrief) -> bytes:
     )
     # Die Datei nutzt den Standard-Notiztyp Basic (Front/Back). Beim Import kann der Nutzer
     # direkt sein bereits bestehendes Zieldeck auswählen, statt ein neues Deck anzulegen.
+    clean_deck_name = re.sub(r"[\r\n]+", " ", str(deck_name or "")).strip()
+    deck_header = f"#deck:{clean_deck_name}\n" if clean_deck_name else ""
     contents = (
         "#separator:Tab\n"
         "#html:true\n"
         "#columns:Front\tBack\n"
         "#notetype:Basic\n"
+        f"{deck_header}"
         f"{front_html}\t{answer_html}\n"
     )
     return contents.encode("utf-8")
+
+
+def create_anki_package(brief: CaseBrief, deck_name: str) -> bytes:
+    """Erstellt ein .apkg-Paket mit dem angegebenen Decknamen."""
+    try:
+        import genanki
+    except ImportError as exc:
+        raise RuntimeError(
+            "Für den .apkg-Export fehlt die Abhängigkeit 'genanki'. Ergänze 'genanki' in requirements.txt und deploye erneut."
+        ) from exc
+
+    normalized_deck_name = re.sub(r"[\r\n]+", " ", str(deck_name or "")).strip()
+    if not normalized_deck_name:
+        raise ValueError("Bitte gib für den .apkg-Export den exakten Namen des Zieldecks in Anki ein.")
+
+    front_text, answer_html = build_card_fields(brief)
+    front_html = html.escape(front_text, quote=False)
+
+    # Stabiler Deck-Identifier: wiederholte Exporte desselben Zieldecks landen im selben Deck.
+    deck_id = int(hashlib.sha256(normalized_deck_name.encode("utf-8")).hexdigest()[:8], 16)
+    deck_id = max(deck_id, 10000)
+
+    card_model = genanki.Model(
+        1607392391,
+        "Entscheidkarten – Rechtsfrage und Erkenntnisse",
+        fields=[
+            {"name": "Vorderseite"},
+            {"name": "Erkenntnisse"},
+        ],
+        templates=[
+            {
+                "name": "Rechtsfrage",
+                "qfmt": '<div class="question">{{Vorderseite}}</div>',
+                "afmt": '{{FrontSide}}<hr id="answer">{{Erkenntnisse}}',
+            }
+        ],
+        css="""
+        .card { font-family: Arial, sans-serif; font-size: 18px; line-height: 1.6;
+                text-align: left; color: #202124; background: #ffffff; padding: 20px; }
+        .question { font-size: 1.15em; font-weight: 600; line-height: 1.5; }
+        li { margin-bottom: 0.45em; }
+        hr { opacity: 0.35; margin: 18px 0; }
+        """,
+    )
+    note = genanki.Note(model=card_model, fields=[front_html, answer_html])
+    deck = genanki.Deck(deck_id, normalized_deck_name)
+    deck.add_note(note)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        package_path = f"{tmp_dir}/entscheidkarte.apkg"
+        genanki.Package(deck).write_to_file(package_path)
+        with open(package_path, "rb") as file_handle:
+            return file_handle.read()
 
 
 # ---------------------------------------------------------------------------
@@ -422,6 +515,25 @@ st.markdown(
         letter-spacing: -0.04em;
         font-weight: 650 !important;
         line-height: 1.15 !important;
+      }
+      .brand-title {
+        margin: 0 0 1rem;
+        letter-spacing: -0.04em;
+        line-height: 1.08;
+      }
+      .brand-title-main {
+        display: block;
+        font-size: 2.8rem;
+        font-weight: 750;
+        letter-spacing: -0.045em;
+      }
+      .brand-title-sub {
+        display: block;
+        margin-top: 0.28rem;
+        font-size: 1.25rem;
+        font-weight: 500;
+        letter-spacing: -0.015em;
+        opacity: 0.72;
       }
       h2, h3 { letter-spacing: -0.02em; }
       [data-testid="stCaptionContainer"] p {
@@ -483,6 +595,8 @@ st.markdown(
           padding-right: 1rem;
         }
         h1 { font-size: 2rem !important; }
+        .brand-title-main { font-size: 2.25rem; }
+        .brand-title-sub { font-size: 1.1rem; }
         [data-baseweb="tab"] { padding: 0.55rem 0.6rem; }
       }
     </style>
@@ -490,7 +604,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title(APP_TITEL)
+st.markdown(
+    """
+    <h1 class="brand-title">
+      <span class="brand-title-main">Entscheidkarten</span>
+      <span class="brand-title-sub">für Studierende</span>
+    </h1>
+    """,
+    unsafe_allow_html=True,
+)
 st.write(APP_UNTERTITEL)
 st.caption("Entscheidnummer eingeben oder den Urteilstext manuell einfügen. Anschliessend die Zusammenfassung prüfen und als Anki-Karte exportieren.")
 
@@ -562,7 +684,7 @@ if fetch_btn or manual_btn:
         st.warning("Bitte füge zuerst einen Urteilstext ein.")
     else:
         # Ein altes Ergebnis wird entfernt, sobald eine neue gültige Analyse startet.
-        for state_key in ("brief", "anki_text_bytes", "raw_preview"):
+        for state_key in ("brief", "anki_text_bytes", "anki_package_bytes", "raw_preview"):
             st.session_state.pop(state_key, None)
 
         if fetch_btn:
@@ -605,6 +727,14 @@ if fetch_btn or manual_btn:
                         if len(session_cache) >= 5:
                             session_cache.pop(next(iter(session_cache)))
                         session_cache[cache_key] = brief.model_copy(deep=True)
+
+                    # Auch zwischengespeicherte Ergebnisse auf die aktuellen Regeln trimmen.
+                    brief.rechtsfrage = format_as_question(brief.rechtsfrage)
+                    brief.sachverhalt = limit_bullet_items(brief.sachverhalt, 3)
+                    brief.rechtliche_erkenntnisse = limit_bullet_items(
+                        generalize_legal_learnings(brief.rechtliche_erkenntnisse), 3
+                    )
+                    session_cache[cache_key] = brief.model_copy(deep=True)
                     anki_text_bytes = create_anki_text(brief)
 
                 st.session_state["brief"] = brief
@@ -623,6 +753,7 @@ if fetch_btn or manual_btn:
 if "brief" in st.session_state and not hasattr(st.session_state["brief"], "rechtliche_erkenntnisse"):
     st.session_state.pop("brief", None)
     st.session_state.pop("anki_text_bytes", None)
+    st.session_state.pop("anki_package_bytes", None)
 
 if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
     brief = st.session_state["brief"]
@@ -661,22 +792,65 @@ if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
     if not safe_filename:
         safe_filename = "entscheidkarte"
 
-    st.download_button(
-        label="In bestehendes Deck importieren (.txt)",
-        data=st.session_state["anki_text_bytes"],
-        file_name=f"{safe_filename}.txt",
-        mime="text/plain; charset=utf-8",
-        type="primary",
-        use_container_width=True,
-        help="Beim Import in Anki kannst du dein bereits bestehendes Deck auswählen.",
+    st.subheader("4. Export")
+    export_format = st.radio(
+        "Wie möchtest du die Karte exportieren?",
+        options=["Anki-Datei (.apkg)", "Textdatei (.txt)"],
+        horizontal=True,
+        key="anki_export_format",
+        help="Die Anki-Datei wird einem Deck mit dem angegebenen Namen zugeordnet. Die Textdatei lässt sich im Anki-Importdialog einem bestehenden Deck zuweisen.",
     )
-    st.caption(
-        "So fügst du die Karte einem bestehenden Deck hinzu: Lade die TXT-Datei herunter, "
-        "öffne in Anki den Importdialog und wähle bei «Deck» dein bestehendes Zieldeck. "
-        "Wähle als Notiztyp «Basic» und aktiviere HTML in Feldern, damit die Aufzählungen "
-        "und Formatierung übernommen werden. Die Vorschau zeigt denselben Inhalt; das genaue "
-        "Erscheinungsbild kann vom Kartendesign deines bestehenden Anki-Notiztyps abhängen."
-    )
+    target_deck_name = st.text_input(
+        "Zieldeck in Anki (exakter Name)",
+        key="anki_target_deck_name",
+        placeholder="z. B. Jus::Obligationenrecht",
+        help="Für den .apkg-Export ist der genaue Name des bestehenden Decks erforderlich. Bei .txt wird dieser Name beim Import vorausgewählt, sofern das Deck existiert.",
+    ).strip()
+
+    if export_format == "Anki-Datei (.apkg)":
+        if not target_deck_name:
+            st.info("Gib den exakten Namen deines bestehenden Anki-Decks ein, um die Karte als .apkg herunterzuladen.")
+        else:
+            try:
+                apkg_bytes = create_anki_package(brief, target_deck_name)
+                st.download_button(
+                    label="Anki-Datei herunterladen (.apkg)",
+                    data=apkg_bytes,
+                    file_name=f"{safe_filename}.apkg",
+                    mime="application/apkg",
+                    type="primary",
+                    use_container_width=True,
+                    help="Beim Import wird der Deckname aus diesem Feld verwendet. Bei identischem Namen kann Anki den Inhalt dem bestehenden Deck zuordnen.",
+                )
+                st.caption(
+                    f"Die .apkg-Datei verwendet den Decknamen «{html.escape(target_deck_name, quote=False)}». "
+                    "Importiere sie in Anki. Verwende exakt denselben Decknamen wie in deiner Sammlung, damit die Karte in dieses Deck gelangt."
+                )
+            except Exception as exc:
+                st.error("Die Anki-Datei konnte nicht erstellt werden.")
+                with st.expander("Technische Details öffnen", expanded=True):
+                    st.code(f"{type(exc).__name__}: {exc}")
+    else:
+        text_bytes = create_anki_text(brief, target_deck_name)
+        st.download_button(
+            label="Textdatei herunterladen (.txt)",
+            data=text_bytes,
+            file_name=f"{safe_filename}.txt",
+            mime="text/plain; charset=utf-8",
+            type="primary",
+            use_container_width=True,
+            help="Beim Import in Anki kann das bestehende Zieldeck ausgewählt werden.",
+        )
+        if target_deck_name:
+            st.caption(
+                f"Beim Import wird «{html.escape(target_deck_name, quote=False)}» als Zieldeck vorausgewählt, "
+                "sofern das Deck in Anki existiert. Du kannst das Ziel im Importdialog kontrollieren."
+            )
+        else:
+            st.caption(
+                "Öffne in Anki den Importdialog und wähle dein bestehendes Zieldeck. "
+                "Der Notiztyp ist «Basic»; HTML ist aktiviert, damit die Aufzählung erhalten bleibt."
+            )
 
     st.caption("Bitte prüfe die Zusammenfassung anhand der amtlichen Originalquelle. Sie dient der blossen Repetition und ersetzt weder den vollständigen Entscheid noch eine juristische Prüfung.")
 
