@@ -700,7 +700,7 @@ if "brief" in st.session_state and not hasattr(st.session_state["brief"], "recht
 if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
     brief = st.session_state["brief"]
     st.divider()
-    st.subheader("2. Zusammenfassung prüfen")
+    st.write("**Zusammenfassung**")
     st.markdown(f"### {html.escape(str(brief.titel), quote=False)}")
 
     result_sections = [
@@ -713,7 +713,7 @@ if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
         # Inhalt stammt aus dem Modell, wird vor HTML-Darstellung aber escaped.
         st.markdown(bullet_list_html(content), unsafe_allow_html=True)
 
-    st.subheader("3. Vorschau der Anki-Karte")
+    st.write("**Vorschau der Anki-Karte**")
     front_text, answer_html = build_card_fields(brief)
     st.markdown("**Vorderseite**")
     st.markdown(
@@ -734,16 +734,16 @@ if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
     if not safe_filename:
         safe_filename = "entscheidkarte"
 
-    st.subheader("4. Export")
-    st.write("**Text direkt kopieren**")
-    st.caption("Nutze das Kopiersymbol oben rechts im jeweiligen Feld, um Vorder- oder Rückseite direkt in Anki einzufügen.")
+    st.write("**Export**")
+    st.write("**Zusammenfassung kopieren**")
+    st.caption("Klicke auf das Kopiersymbol im Feld, um die Zusammenfassung mit ihren Stichpunkten zu kopieren.")
 
-    st.markdown("**Vorderseite**")
-    st.code(front_text, language="text")
-
-    st.markdown("**Rückseite**")
-    back_plain_text = "\n".join(f"• {item}" for item in bullet_items(brief.rechtliche_erkenntnisse))
-    st.code(back_plain_text, language="text")
+    summary_parts = [str(brief.titel).strip(), "", "Sachverhalt"]
+    summary_parts.extend(f"• {item}" for item in bullet_items(brief.sachverhalt))
+    summary_parts.extend(["", "Rechtsfrage", f"• {format_as_question(brief.rechtsfrage)}", "", "Rechtliche Erkenntnisse"])
+    summary_parts.extend(f"• {item}" for item in bullet_items(brief.rechtliche_erkenntnisse))
+    summary_copy_text = "\n".join(summary_parts)
+    st.code(summary_copy_text, language="text")
 
     st.download_button(
         label="Anki-Importdatei herunterladen (.txt)",
@@ -756,11 +756,9 @@ if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
     )
     st.caption(
         "Für den Import: In Anki «Datei → Importieren» wählen, die TXT-Datei öffnen und im Importdialog "
-        "dein bestehendes Zieldeck auswählen. Der Deckname muss hier nicht eingegeben werden. "
-        "Die Datei verwendet den Notiztyp «Basic» und enthält HTML-formatierte Stichpunkte."
+        "dein bestehendes Zieldeck auswählen. Die Datei verwendet den Notiztyp «Basic» und enthält "
+        "HTML-formatierte Stichpunkte."
     )
-
-    st.caption("Bitte prüfe die Zusammenfassung anhand der amtlichen Originalquelle. Sie dient der blossen Repetition und ersetzt weder den vollständigen Entscheid noch eine juristische Prüfung.")
 
     if st.session_state.get("raw_preview"):
         with st.expander("Verarbeiteten Ausgangstext ansehen"):
