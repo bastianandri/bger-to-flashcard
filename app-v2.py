@@ -2,7 +2,6 @@ import hashlib
 import html
 import re
 import time
-import tempfile
 from typing import Optional
 
 import requests
@@ -424,80 +423,24 @@ def build_card_fields(brief: CaseBrief) -> tuple[str, str]:
     return front_text, answer_html
 
 
-def create_anki_text(brief: CaseBrief, deck_name: str = "") -> bytes:
-    """Erstellt eine TXT-Datei; ein vorhandenes Zieldeck kann beim Import vorausgewählt werden."""
+def create_anki_text(brief: CaseBrief) -> bytes:
+    """Erstellt eine Anki-Importdatei, für die das Zieldeck in Anki gewählt wird."""
     front_text, answer_html = build_card_fields(brief)
     front_html = (
         '<div style="font-family:Arial,sans-serif;font-size:20px;line-height:1.5;'
         'font-weight:600;color:#202124;">'
         f'{html.escape(front_text, quote=False)}</div>'
     )
-    # Die Datei nutzt den Standard-Notiztyp Basic (Front/Back). Beim Import kann der Nutzer
-    # direkt sein bereits bestehendes Zieldeck auswählen, statt ein neues Deck anzulegen.
-    clean_deck_name = re.sub(r"[\r\n]+", " ", str(deck_name or "")).strip()
-    deck_header = f"#deck:{clean_deck_name}\n" if clean_deck_name else ""
+    # Ohne #deck-Header kann der Nutzer beim Import sein bestehendes Deck auswählen.
     contents = (
         "#separator:Tab\n"
         "#html:true\n"
         "#columns:Front\tBack\n"
         "#notetype:Basic\n"
-        f"{deck_header}"
         f"{front_html}\t{answer_html}\n"
     )
     return contents.encode("utf-8")
 
-
-def create_anki_package(brief: CaseBrief, deck_name: str) -> bytes:
-    """Erstellt ein .apkg-Paket mit dem angegebenen Decknamen."""
-    try:
-        import genanki
-    except ImportError as exc:
-        raise RuntimeError(
-            "Für den .apkg-Export fehlt die Abhängigkeit 'genanki'. Ergänze 'genanki' in requirements.txt und deploye erneut."
-        ) from exc
-
-    normalized_deck_name = re.sub(r"[\r\n]+", " ", str(deck_name or "")).strip()
-    if not normalized_deck_name:
-        raise ValueError("Bitte gib für den .apkg-Export den exakten Namen des Zieldecks in Anki ein.")
-
-    front_text, answer_html = build_card_fields(brief)
-    front_html = html.escape(front_text, quote=False)
-
-    # Stabiler Deck-Identifier: wiederholte Exporte desselben Zieldecks landen im selben Deck.
-    deck_id = int(hashlib.sha256(normalized_deck_name.encode("utf-8")).hexdigest()[:8], 16)
-    deck_id = max(deck_id, 10000)
-
-    card_model = genanki.Model(
-        1607392391,
-        "Entscheidkarten – Rechtsfrage und Erkenntnisse",
-        fields=[
-            {"name": "Vorderseite"},
-            {"name": "Erkenntnisse"},
-        ],
-        templates=[
-            {
-                "name": "Rechtsfrage",
-                "qfmt": '<div class="question">{{Vorderseite}}</div>',
-                "afmt": '{{FrontSide}}<hr id="answer">{{Erkenntnisse}}',
-            }
-        ],
-        css="""
-        .card { font-family: Arial, sans-serif; font-size: 18px; line-height: 1.6;
-                text-align: left; color: #202124; background: #ffffff; padding: 20px; }
-        .question { font-size: 1.15em; font-weight: 600; line-height: 1.5; }
-        li { margin-bottom: 0.45em; }
-        hr { opacity: 0.35; margin: 18px 0; }
-        """,
-    )
-    note = genanki.Note(model=card_model, fields=[front_html, answer_html])
-    deck = genanki.Deck(deck_id, normalized_deck_name)
-    deck.add_note(note)
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        package_path = f"{tmp_dir}/entscheidkarte.apkg"
-        genanki.Package(deck).write_to_file(package_path)
-        with open(package_path, "rb") as file_handle:
-            return file_handle.read()
 
 
 # ---------------------------------------------------------------------------
@@ -684,7 +627,7 @@ if fetch_btn or manual_btn:
         st.warning("Bitte füge zuerst einen Urteilstext ein.")
     else:
         # Ein altes Ergebnis wird entfernt, sobald eine neue gültige Analyse startet.
-        for state_key in ("brief", "anki_text_bytes", "anki_package_bytes", "raw_preview"):
+        for state_key in ("brief", "anki_text_bytes", "raw_preview"):
             st.session_state.pop(state_key, None)
 
         if fetch_btn:
@@ -753,7 +696,6 @@ if fetch_btn or manual_btn:
 if "brief" in st.session_state and not hasattr(st.session_state["brief"], "rechtliche_erkenntnisse"):
     st.session_state.pop("brief", None)
     st.session_state.pop("anki_text_bytes", None)
-    st.session_state.pop("anki_package_bytes", None)
 
 if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
     brief = st.session_state["brief"]
@@ -793,64 +735,30 @@ if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
         safe_filename = "entscheidkarte"
 
     st.subheader("4. Export")
-    export_format = st.radio(
-        "Wie möchtest du die Karte exportieren?",
-        options=["Anki-Datei (.apkg)", "Textdatei (.txt)"],
-        horizontal=True,
-        key="anki_export_format",
-        help="Die Anki-Datei wird einem Deck mit dem angegebenen Namen zugeordnet. Die Textdatei lässt sich im Anki-Importdialog einem bestehenden Deck zuweisen.",
-    )
-    target_deck_name = st.text_input(
-        "Zieldeck in Anki (exakter Name)",
-        key="anki_target_deck_name",
-        placeholder="z. B. Jus::Obligationenrecht",
-        help="Für den .apkg-Export ist der genaue Name des bestehenden Decks erforderlich. Bei .txt wird dieser Name beim Import vorausgewählt, sofern das Deck existiert.",
-    ).strip()
+    st.write("**Text direkt kopieren**")
+    st.caption("Nutze das Kopiersymbol oben rechts im jeweiligen Feld, um Vorder- oder Rückseite direkt in Anki einzufügen.")
 
-    if export_format == "Anki-Datei (.apkg)":
-        if not target_deck_name:
-            st.info("Gib den exakten Namen deines bestehenden Anki-Decks ein, um die Karte als .apkg herunterzuladen.")
-        else:
-            try:
-                apkg_bytes = create_anki_package(brief, target_deck_name)
-                st.download_button(
-                    label="Anki-Datei herunterladen (.apkg)",
-                    data=apkg_bytes,
-                    file_name=f"{safe_filename}.apkg",
-                    mime="application/apkg",
-                    type="primary",
-                    use_container_width=True,
-                    help="Beim Import wird der Deckname aus diesem Feld verwendet. Bei identischem Namen kann Anki den Inhalt dem bestehenden Deck zuordnen.",
-                )
-                st.caption(
-                    f"Die .apkg-Datei verwendet den Decknamen «{html.escape(target_deck_name, quote=False)}». "
-                    "Importiere sie in Anki. Verwende exakt denselben Decknamen wie in deiner Sammlung, damit die Karte in dieses Deck gelangt."
-                )
-            except Exception as exc:
-                st.error("Die Anki-Datei konnte nicht erstellt werden.")
-                with st.expander("Technische Details öffnen", expanded=True):
-                    st.code(f"{type(exc).__name__}: {exc}")
-    else:
-        text_bytes = create_anki_text(brief, target_deck_name)
-        st.download_button(
-            label="Textdatei herunterladen (.txt)",
-            data=text_bytes,
-            file_name=f"{safe_filename}.txt",
-            mime="text/plain; charset=utf-8",
-            type="primary",
-            use_container_width=True,
-            help="Beim Import in Anki kann das bestehende Zieldeck ausgewählt werden.",
-        )
-        if target_deck_name:
-            st.caption(
-                f"Beim Import wird «{html.escape(target_deck_name, quote=False)}» als Zieldeck vorausgewählt, "
-                "sofern das Deck in Anki existiert. Du kannst das Ziel im Importdialog kontrollieren."
-            )
-        else:
-            st.caption(
-                "Öffne in Anki den Importdialog und wähle dein bestehendes Zieldeck. "
-                "Der Notiztyp ist «Basic»; HTML ist aktiviert, damit die Aufzählung erhalten bleibt."
-            )
+    st.markdown("**Vorderseite**")
+    st.code(front_text, language="text")
+
+    st.markdown("**Rückseite**")
+    back_plain_text = "\n".join(f"• {item}" for item in bullet_items(brief.rechtliche_erkenntnisse))
+    st.code(back_plain_text, language="text")
+
+    st.download_button(
+        label="Anki-Importdatei herunterladen (.txt)",
+        data=st.session_state["anki_text_bytes"],
+        file_name=f"{safe_filename}.txt",
+        mime="text/plain; charset=utf-8",
+        type="primary",
+        use_container_width=True,
+        help="Die Datei kann in Anki importiert und dabei einem bestehenden Deck zugewiesen werden.",
+    )
+    st.caption(
+        "Für den Import: In Anki «Datei → Importieren» wählen, die TXT-Datei öffnen und im Importdialog "
+        "dein bestehendes Zieldeck auswählen. Der Deckname muss hier nicht eingegeben werden. "
+        "Die Datei verwendet den Notiztyp «Basic» und enthält HTML-formatierte Stichpunkte."
+    )
 
     st.caption("Bitte prüfe die Zusammenfassung anhand der amtlichen Originalquelle. Sie dient der blossen Repetition und ersetzt weder den vollständigen Entscheid noch eine juristische Prüfung.")
 
