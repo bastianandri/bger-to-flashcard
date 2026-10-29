@@ -580,7 +580,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.write(APP_UNTERTITEL)
-st.caption("Entscheidnummer eingeben oder den Urteilstext manuell einfügen. Anschliessend die Zusammenfassung prüfen und als Anki-Karte exportieren.")
+st.caption("Gib die Entscheidnummer ein oder füge den Urteilstext manuell hinzu. Das Tool erstellt eine Zusammenfassung welche sich direkt als Anki-Karte exportieren lässt.")
 
 with st.expander("Einstellungen", expanded=False):
     default_key = FEST_EINGEBAUTER_KEY.strip()
