@@ -585,7 +585,7 @@ with st.expander("Einstellungen", expanded=False):
 tab_search, tab_manual = st.tabs(["Entscheidsuche", "Text manuell einfügen"])
 
 with tab_search:
-    st.write("**1. Entscheid finden**")
+    st.subheader("1. Entscheid finden")
     with st.form("search_form", clear_on_submit=False, border=False):
         case_num = st.text_input(
             "Geschäftsnummer oder BGE",
@@ -598,7 +598,7 @@ with tab_search:
         )
 
 with tab_manual:
-    st.write("**1. Urteilstext einfügen**")
+    st.subheader("1. Urteilstext einfügen")
     with st.form("manual_form", clear_on_submit=False, border=False):
         manual_text = st.text_area(
             "Vollständigen Urteilstext",
@@ -700,65 +700,74 @@ if "brief" in st.session_state and not hasattr(st.session_state["brief"], "recht
 if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
     brief = st.session_state["brief"]
     st.divider()
-    st.write("**Zusammenfassung**")
+    st.subheader("2. Zusammenfassung")
     st.markdown(f"### {html.escape(str(brief.titel), quote=False)}")
 
     result_sections = [
         ("Sachverhalt", brief.sachverhalt),
         ("Rechtsfrage", format_as_question(brief.rechtsfrage)),
-        ("Rechtliche Erkenntnisse", brief.rechtliche_erkenntnisse),
+        ("Erwägungen", brief.rechtliche_erkenntnisse),
     ]
     for heading, content in result_sections:
         st.markdown(f"**{heading}**")
         # Inhalt stammt aus dem Modell, wird vor HTML-Darstellung aber escaped.
         st.markdown(bullet_list_html(content), unsafe_allow_html=True)
 
-    st.write("**Vorschau der Anki-Karte**")
+    st.subheader("3. Vorschau der Anki-Karte")
     front_text, answer_html = build_card_fields(brief)
-    st.markdown("**Vorderseite**")
-    st.markdown(
-        '<div class="anki-card-preview"><div class="anki-card-question">'
-        f'{html.escape(front_text, quote=False)}'
-        '</div></div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown("**Rückseite**")
-    st.markdown(
-        '<div class="anki-card-preview">'
-        f'{answer_html}'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+    preview_col_front, preview_col_back = st.columns(2, gap="medium")
+    with preview_col_front:
+        st.markdown("**Vorderseite**")
+        st.markdown(
+            '<div class="anki-card-preview"><div class="anki-card-question">'
+            f'{html.escape(front_text, quote=False)}'
+            '</div></div>',
+            unsafe_allow_html=True,
+        )
+    with preview_col_back:
+        st.markdown("**Rückseite**")
+        st.markdown(
+            '<div class="anki-card-preview">'
+            f'{answer_html}'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
     safe_filename = re.sub(r"[^\w.-]+", "_", brief.titel, flags=re.UNICODE).strip("._")[:64]
     if not safe_filename:
         safe_filename = "entscheidkarte"
 
-    st.write("**Export**")
-    st.write("**Zusammenfassung kopieren**")
-    st.caption("Klicke auf das Kopiersymbol im Feld, um die Zusammenfassung mit ihren Stichpunkten zu kopieren.")
+    st.subheader("4. Exportieren")
+    export_anki_tab, copy_text_tab = st.tabs(["Anki-Karte exportieren", "Zusammenfassung kopieren"])
 
-    summary_parts = [str(brief.titel).strip(), "", "Sachverhalt"]
-    summary_parts.extend(f"• {item}" for item in bullet_items(brief.sachverhalt))
-    summary_parts.extend(["", "Rechtsfrage", f"• {format_as_question(brief.rechtsfrage)}", "", "Rechtliche Erkenntnisse"])
-    summary_parts.extend(f"• {item}" for item in bullet_items(brief.rechtliche_erkenntnisse))
-    summary_copy_text = "\n".join(summary_parts)
-    st.code(summary_copy_text, language="text")
+    with export_anki_tab:
+        st.write("Lade die Karte als Anki-Importdatei herunter und wähle beim Import in Anki dein bestehendes Deck aus.")
+        st.download_button(
+            label="Anki-Importdatei herunterladen (.txt)",
+            data=st.session_state["anki_text_bytes"],
+            file_name=f"{safe_filename}.txt",
+            mime="text/plain; charset=utf-8",
+            type="primary",
+            use_container_width=True,
+            help="Die Datei enthält Vorder- und Rückseite und kann beim Anki-Import einem bestehenden Deck zugewiesen werden.",
+        )
+        st.caption(
+            "In Anki «Datei → Importieren» wählen, die TXT-Datei öffnen und im Importdialog "
+            "das gewünschte bestehende Deck auswählen. Der Import verwendet den Notiztyp «Basic» "
+            "und enthält HTML-formatierte Stichpunkte."
+        )
 
-    st.download_button(
-        label="Anki-Importdatei herunterladen (.txt)",
-        data=st.session_state["anki_text_bytes"],
-        file_name=f"{safe_filename}.txt",
-        mime="text/plain; charset=utf-8",
-        type="primary",
-        use_container_width=True,
-        help="Die Datei kann in Anki importiert und dabei einem bestehenden Deck zugewiesen werden.",
-    )
-    st.caption(
-        "Für den Import: In Anki «Datei → Importieren» wählen, die TXT-Datei öffnen und im Importdialog "
-        "dein bestehendes Zieldeck auswählen. Die Datei verwendet den Notiztyp «Basic» und enthält "
-        "HTML-formatierte Stichpunkte."
-    )
+    with copy_text_tab:
+        st.write("Kopiere die Zusammenfassung, nicht die Anki-Karte.")
+        summary_parts = [str(brief.titel).strip(), "", "Sachverhalt"]
+        summary_parts.extend(f"• {item}" for item in bullet_items(brief.sachverhalt))
+        summary_parts.extend(
+            ["", "Rechtsfrage", f"• {format_as_question(brief.rechtsfrage)}", "", "Erwägungen"]
+        )
+        summary_parts.extend(f"• {item}" for item in bullet_items(brief.rechtliche_erkenntnisse))
+        summary_copy_text = "\n".join(summary_parts)
+        st.caption("Klicke auf das Kopiersymbol im Textfeld, um die Zusammenfassung zu kopieren.")
+        st.code(summary_copy_text, language="text")
 
     if st.session_state.get("raw_preview"):
         with st.expander("Verarbeiteten Ausgangstext ansehen"):
@@ -766,7 +775,7 @@ if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
 
 st.divider()
 st.caption(
-    "Die Zusammenfassungen werden KI-gestützt erstellt und dienen der Unterstützung bei der Repetiton. Sie können Fehler enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext."
+    "Entscheidkarten · Die Zusammenfassungen werden KI-gestützt erstellt und dienen der Unterstützung bei der Repetiton. Sie können Fehler enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext."
 )
 st.markdown(
     """
