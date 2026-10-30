@@ -259,7 +259,7 @@ def generate_brief(
     system_prompt = (
         "Du analysierst ausschliesslich den bereitgestellten Entscheid des Schweizerischen "
         "Bundesgerichts. Antworte auf Deutsch und verwende schweizerische juristische Terminologie. "
-        "Gib IMMER die einschlägigen Rechtsnormen an, wenn sich die Rechtsfrage um diese dreht"
+        "Gib IMMER die einschlägigen Rechtsnormen an, wenn sich die Rechtsfrage um diese dreht bzw. wenn du juristische Fachtermini nennst nenne die dazugehörigen Rechtsnormen"
         "Verwende engliche Fachtermini, wenn das Gericht diese verwendet. Übersetze bei franzöischen oder italienischsprachigen Entscheiden die Gesetzeskürzel in die Deutsche Version also 'CO' wird OR beispielsweise"
         "Die Rechtsfrage MUSS eine abstrakte, neutrale, offene Prüfungsfrage zum allgemeinen Rechtsproblem sein. "
         "Bevorzuge Formulierungen wie 'Welche Voraussetzungen gelten für ...?', 'Unter welchen Umständen liegt ... vor?', "
