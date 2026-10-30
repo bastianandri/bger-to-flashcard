@@ -803,7 +803,7 @@ if "brief" in st.session_state and "anki_text_bytes" in st.session_state:
 
 st.divider()
 st.caption(
-    "Entscheidkarten · Die Zusammenfassungen werden KI-gestützt erstellt und dienen der Unterstützung bei der Repetiton. Sie können Fehler enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext."
+    "Die Zusammenfassungen werden KI-gestützt erstellt und dienen der Unterstützung bei der Repetiton. Sie können Fehler enthalten und ersetzen weder die Lektüre des vollständigen Originalentscheids noch die eigenständige Auseinandersetzung mit dessen Begründung und Kontext."
 )
 st.markdown(
     """
